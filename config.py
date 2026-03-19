@@ -24,7 +24,7 @@ NEWS_RSS_URLS = [
 
 # Gemini (요약용)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # Telegram
 # 여러 환경에서 발생할 수 있는 특수문자, 따옴표, 띄어쓰기 등 잘못된 입력값 필터링
