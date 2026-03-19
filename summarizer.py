@@ -81,7 +81,9 @@ async def summarize_news_stream(
                 full_text += part
                 await on_chunk(part)
     except Exception as e:
-        # 안전 필터망에 걸려 갑자기 끊기면 에러가 발생하므로, 에러 발생시 그때까지 쓴 글을 유지합니다.
-        pass
+        # 안전 필터망에 걸려 갑자기 끊기면 차단 메시지 추가
+        msg = "\n[...구글 AI 자체 검열(전쟁, 범죄, 폭력성, 저작권 등)로 인해 요약이 강제 중단되었습니다.]"
+        full_text += msg
+        await on_chunk(msg)
 
     return full_text.strip() if full_text else "(요약 생성 불가: 구글 안전 필터 차단됨)"

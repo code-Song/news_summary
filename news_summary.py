@@ -105,8 +105,11 @@ async def _do_summarize_and_send(chat_id: str):
             text_content = fetch_article_text(news.url)
             
             # 본문 추출 실패시(리다이렉트나 차단 등) 최후의 보루로 API에서 받은 요약문을 본문으로 사용!
-            if len(text_content.strip()) < 50 and getattr(news, "description", ""):
-                text_content = news.description.strip()
+            if len(text_content.strip()) < 50:
+                if getattr(news, "description", "").strip():
+                    text_content = news.description.strip()
+                else:
+                    text_content = f"{news.title} (기사 본문 접근 불가능)"
             
             accumulated = ""
             last_sent_len = 0
