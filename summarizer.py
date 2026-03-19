@@ -42,8 +42,7 @@ async def summarize_news_stream(
 {text}"""
 
     full_text = ""
-    loop = asyncio.get_running_loop()
-
+    
     safety_settings = [
         {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
         {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -51,23 +50,28 @@ async def summarize_news_stream(
         {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
     ]
 
-    def _call_stream():
-        return model.generate_content(
+    try:
+        response = await model.generate_content_async(
             prompt,
             stream=True,
-            generation_config=genai.types.GenerationConfig(max_output_tokens=600),
+            generation_config=genai.types.GenerationConfig(max_output_tokens=1000),
             safety_settings=safety_settings
         )
-
-    try:
-        response = await loop.run_in_executor(None, _call_stream)
-        for chunk in response:
-            part = chunk.text or ""
-            if part:
-                full_text += part
-                await on_chunk(part)
+        
+        async for chunk in response:
+            try:
+                part = chunk.text or ""
+                if part:
+                    full_text += part
+                    await on_chunk(part)
+            except ValueError:
+                # 안전 필터에 걸려 텍스트가 없는 Chunk 접근시 에러 발생
+                full_text += "\n[구글 제미나이 안전 필터로 인해 요약이 강제 중단됨]"
+                await on_chunk(full_text)
+                break
+                
     except Exception as e:
-        msg = f"\n[...구글 AI 자체 검열(보안 필터)로 인해 요약이 강제 중단되었거나 에러가 발생했습니다: {e}]"
+        msg = f"\n[...구글 서버 연결 중단 또는 내부 에러가 발생했습니다: {e}]"
         full_text += msg
         await on_chunk(msg)
 
