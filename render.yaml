@@ -9,14 +9,14 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
       - key: NAVER_API_KEY
         sync: false
       - key: NAVER_SECRET_KEY
         sync: false
-      - key: OPENAI_MODEL
-        value: gpt-4o-mini
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
       - key: DAILY_HOUR
         value: "6"
       - key: DAILY_MINUTE

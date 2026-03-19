@@ -22,9 +22,9 @@ NEWS_RSS_URLS = [
     if x.strip()
 ]
 
-# OpenAI (요약용)
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+# Gemini (요약용)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # 네이버 뉴스 전용 검색 API
 NAVER_API_KEY = os.environ.get("NAVER_API_KEY", "")
