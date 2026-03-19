@@ -11,10 +11,14 @@ except ImportError:
 
 _DATA_DIR = Path("/data") if Path("/data").exists() else Path(__file__).parent
 
-# 기본으로 구글 뉴스 (한국어) 사용
+# 구글 뉴스는 최근 스크래핑을 차단하여 원본 기사 주소를 숨기므로,
+# 본문 추출이 매우 용이한 국내 다이렉트 언론사 RSS로 기본 동작 변경
 NEWS_RSS_URLS = [
     x.strip()
-    for x in os.environ.get("NEWS_RSS_URLS", "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko").split(",")
+    for x in os.environ.get(
+        "NEWS_RSS_URLS", 
+        "https://fs.jtbc.co.kr/RSS/newsflash.xml,https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=14&plink=RSSREADER"
+    ).split(",")
     if x.strip()
 ]
 
