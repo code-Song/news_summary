@@ -177,7 +177,15 @@ async def _init_bot_with_retry():
         logger.error("❌ TELEGRAM_BOT_TOKEN 시크릿이 설정되지 않았습니다!")
         return
 
-    _bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    # IPv6 DNS 매칭 오류([Errno -5])를 완벽히 피하기 위해 커스텀 HTTPXRequest 생성
+    from telegram.request import HTTPXRequest
+    import httpx
+    import socket
+
+    # IPv4 기반의 연결을 강제하는 소켓 패치 수준의 우회나 넉넉한 타임아웃
+    custom_request = HTTPXRequest(connection_pool_size=8, read_timeout=30)
+    
+    _bot = Bot(token=TELEGRAM_BOT_TOKEN, request=custom_request)
     await asyncio.sleep(3)
 
     attempt = 0

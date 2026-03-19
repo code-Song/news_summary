@@ -23,8 +23,9 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-pro")
 
 # Telegram
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+# 여러 환경에서 발생할 수 있는 특수문자, 따옴표, 띄어쓰기 등 잘못된 입력값 필터링
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip(" \n\r\"'")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip(" \n\r\"'")
 
 # 스케줄 (매일 6시, 한국 시간)
 DAILY_HOUR = int(os.environ.get("DAILY_HOUR", "6"))
