@@ -24,6 +24,14 @@ async def summarize_news_stream(
         await on_chunk(msg)
         return msg
 
+    # 이전 버전과 동일하게 검증된 구버전 라이브러리로 롤백
+    import google.generativeai as genai
+
+    if not GEMINI_API_KEY:
+        msg = "(Gemini API 키가 없어 요약을 건너뜁니다. .env 파일에 GEMINI_API_KEY를 설정해주세요.)"
+        await on_chunk(msg)
+        return msg
+
     if len(text) > max_chars:
         text = text[:max_chars] + "\n[...중략...]"
 
@@ -32,11 +40,9 @@ async def summarize_news_stream(
         await on_chunk(msg)
         return msg
 
-    # 최신 google.genai 라이브러리 사용
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    # 이전 youtube_summary 방식과 100% 동일하게 구성
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel(GEMINI_MODEL)
     
     prompt = f"""당신은 뉴스 기사를 읽고 3~5문장으로 핵심만 간결하게 요약하는 도우미입니다. 한국어로 답변하세요.
 
@@ -49,17 +55,16 @@ async def summarize_news_stream(
     full_text = ""
     loop = asyncio.get_running_loop()
 
-    # Gemini stream 비동기 처리
     def _call_stream():
-        return client.models.generate_content_stream(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(max_output_tokens=500),
+        return model.generate_content(
+            prompt,
+            stream=True,
+            generation_config=genai.types.GenerationConfig(max_output_tokens=500),
         )
 
-    response_stream = await loop.run_in_executor(None, _call_stream)
+    response = await loop.run_in_executor(None, _call_stream)
 
-    for chunk in response_stream:
+    for chunk in response:
         part = chunk.text or ""
         if part:
             full_text += part
