@@ -10,7 +10,22 @@ import asyncio
 import logging
 import os
 import sys
+import socket
 from pathlib import Path
+
+# ---------- [Hugging Face DNS 우회 임시 스크립트] ----------
+# Hugging Face 일부 무료 컨테이너에서 api.telegram.org DNS를 못 찾는 현상(Errno -5) 우회
+_orig_getaddrinfo = socket.getaddrinfo
+
+def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    if host == 'api.telegram.org':
+        # Telegram API 서버 공식 고정 IPv4 할당
+        host = '149.154.167.220'
+        family = socket.AF_INET
+    return _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+socket.getaddrinfo = patched_getaddrinfo
+# -----------------------------------------------------------
 
 sys.path.insert(0, str(Path(__file__).parent))
 
