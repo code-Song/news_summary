@@ -174,10 +174,11 @@ async def _handle_update(update: Update):
 async def _init_bot_with_retry():
     global _bot, _bot_ready
     if not TELEGRAM_BOT_TOKEN:
+        logger.error("❌ TELEGRAM_BOT_TOKEN 시크릿이 설정되지 않았습니다!")
         return
 
     _bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    await asyncio.sleep(5)
+    await asyncio.sleep(3)
 
     attempt = 0
     while True:
@@ -185,11 +186,25 @@ async def _init_bot_with_retry():
         try:
             me = await _bot.get_me()
             _bot_ready = True
-            if WEBHOOK_URL:
-                await _bot.set_webhook(url=WEBHOOK_URL)
+            logger.info("✅ 텔레그램 봇 초기화 성공: @%s", me.username)
+            
+            # 수동 설정값 또는 HuggingFace SPACE_HOST 환경변수 확인
+            host = WEBHOOK_URL
+            
+            # SPACE_ID를 통한 URL 직접 조립 (대체 방안)
+            if not host and os.environ.get("SPACE_ID"):
+                space_id = os.environ.get("SPACE_ID").replace("/", "-").lower()
+                host = f"https://{space_id}.hf.space/webhook"
+                
+            if host:
+                await _bot.set_webhook(url=host)
+                logger.info("🔗 Webhook 등록 완료: %s", host)
+            else:
+                logger.error("❌ WEBHOOK_URL을 찾지 못하여 Webhook 등록을 실패했습니다.")
             return
         except Exception as e:
-            await asyncio.sleep(30)
+            logger.warning("봇 초기화 시도 %d 실패: %s. 10초 후 재시도...", attempt, e)
+            await asyncio.sleep(10)
 
 @fastapi_app.api_route("/", methods=["GET", "HEAD"])
 async def health_check():
