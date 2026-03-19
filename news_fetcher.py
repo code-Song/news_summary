@@ -17,6 +17,7 @@ class NewsInfo:
     title: str
     publisher: str
     published_date: str
+    description: str = ""
 
 import datetime
 import re
@@ -58,13 +59,15 @@ def fetch_rss_news() -> List[NewsInfo]:
                 
             # 네이버 API는 타이틀에 <b> 태그 등을 넣으므로 제거
             title = re.sub(r'<[^>]+>', '', item.get("title", ""))
+            desc = re.sub(r'<[^>]+>', '', item.get("description", ""))
             published = item.get("pubDate", "")
             
             news_list.append(NewsInfo(
                 url=link,
                 title=title,
                 publisher="네이버 뉴스",
-                published_date=published
+                published_date=published,
+                description=desc
             ))
             
             if len(news_list) >= MAX_NEWS_COUNT:
@@ -91,7 +94,7 @@ def fetch_article_text(url: str) -> str:
         dic_area = soup.select_one("#dic_area") or soup.select_one("#newsct_article")
         if dic_area:
             # 사진 설명 등 불필요한 내부 태그 제거
-            for blind in dic_area.select("span.end_photo_org, div.nbd_im_w, em.img_desc, strong"):
+            for blind in dic_area.select("span.end_photo_org, div.nbd_im_w, em.img_desc"):
                 blind.decompose()
             return dic_area.get_text(separator='\n', strip=True)[:10000]
             
