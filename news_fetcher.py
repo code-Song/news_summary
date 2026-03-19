@@ -81,24 +81,33 @@ def fetch_rss_news() -> List[NewsInfo]:
 
 def fetch_article_text(url: str) -> str:
     """네이버 뉴스 본문을 파싱 (기사 내용만 정확하게 추출하여 외계어/메뉴 차단)"""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    }
+    # 사용자가 제안한 검증된 이전 프로젝트의 Session 헤더 완벽 차용
+    UA = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/123.0 Safari/537.36"
+    )
+    headers = {"User-Agent": UA, "Accept-Language": "ko-KR,ko;q=0.9"}
+    
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.content, "html.parser", from_encoding="utf-8")
+        # 이전 코드대로 lxml 혹은 html.parser 사용
+        soup = BeautifulSoup(response.text, "html.parser")
         
-        # 1. 네이버 뉴스 전용 본문 컨테이너 (정확도 100%)
-        dic_area = soup.select_one("#dic_area") or soup.select_one("#newsct_article")
-        if dic_area:
-            # 사진 설명 등 불필요한 내부 태그 제거
-            for blind in dic_area.select("span.end_photo_org, div.nbd_im_w, em.img_desc"):
-                blind.decompose()
-            return dic_area.get_text(separator='\n', strip=True)[:10000]
+        # 1. 네이버 뉴스 전용 본문 컨테이너
+        article = soup.select_one("#dic_area") or soup.select_one("#newsct_article")
+        if article:
+            # 불필요 요소 완벽 제거 (과거 프로젝트 참조 적용)
+            for s in article.select("script, style, .media_end_correction, .copyright, figure"):
+                s.decompose()
+            for br in article.find_all("br"):
+                br.replace_with("\n")
+                
+            return article.get_text('\n', strip=True)[:10000]
             
-        # 2. 일반 백업 로직 (본문 p태그)
+        # 2. 일반 백업 로직
         paragraphs = soup.find_all("p")
         text_content = [p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 30]
         
