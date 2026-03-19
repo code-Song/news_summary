@@ -11,6 +11,10 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: NAVER_API_KEY
+        sync: false
+      - key: NAVER_SECRET_KEY
+        sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
       - key: DAILY_HOUR

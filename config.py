@@ -26,6 +26,10 @@ NEWS_RSS_URLS = [
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
+# 네이버 뉴스 전용 검색 API
+NAVER_API_KEY = os.environ.get("NAVER_API_KEY", "")
+NAVER_SECRET_KEY = os.environ.get("NAVER_SECRET_KEY", "")
+
 # Telegram
 # 여러 환경에서 발생할 수 있는 특수문자, 따옴표, 띄어쓰기 등 잘못된 입력값 필터링
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip(" \n\r\"'")

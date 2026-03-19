@@ -7,7 +7,7 @@ from typing import List
 import feedparser
 import requests
 from bs4 import BeautifulSoup
-from config import NEWS_RSS_URLS, MAX_NEWS_COUNT
+from config import NEWS_RSS_URLS, MAX_NEWS_COUNT, NAVER_API_KEY, NAVER_SECRET_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -18,78 +18,93 @@ class NewsInfo:
     publisher: str
     published_date: str
 
+import datetime
+import re
 
 def fetch_rss_news() -> List[NewsInfo]:
-    """설정된 RSS URL에서 뉴스 목록을 가져옵니다."""
+    """사용자가 발급한 네이버 Open API를 통해 깔끔하게 최신 네이버 뉴스(속보)를 가져옵니다."""
     news_list = []
     
-    for rss_url in NEWS_RSS_URLS:
-        logger.info("RSS 피드 가져오는 중: %s", rss_url)
-        try:
-            feed = feedparser.parse(rss_url)
-            default_publisher = feed.feed.get("title", "뉴스")
-            
-            # 아이템 파싱 (최대 개수 여유있게 가져옵니다)
-            for entry in feed.entries[:MAX_NEWS_COUNT * 2]:
-                title = entry.get("title", "")
-                link = entry.get("link", "")
-                published = entry.get("published", "")
-                
-                # 구글 뉴스의 경우 source 태그에 매체명이 있을 수 있음
-                actual_publisher = default_publisher
-                if "source" in entry and "title" in entry.source:
-                    actual_publisher = entry.source.title
-                
-                if not link:
-                    continue
-                
-                news_list.append(NewsInfo(
-                    url=link,
-                    title=title,
-                    publisher=actual_publisher,
-                    published_date=published
-                ))
-        except Exception as e:
-            logger.error("RSS 피드 파싱 실패 (%s): %s", rss_url, e)
+    if not NAVER_API_KEY or not NAVER_SECRET_KEY:
+        logger.error("NAVER_API_KEY 및 NAVER_SECRET_KEY 설정이 필요합니다.")
+        return news_list
 
-    # 링크 기준으로 중복 제거 (순서 유지)
-    seen = set()
-    unique_news = []
-    for news in news_list:
-        if news.url not in seen:
-            seen.add(news.url)
-            unique_news.append(news)
+    # 네이버 뉴스 검색 API URL
+    url = "https://openapi.naver.com/v1/search/news.json"
+    headers = {
+        "X-Naver-Client-Id": NAVER_API_KEY,
+        "X-Naver-Client-Secret": NAVER_SECRET_KEY
+    }
+    
+    # '속보' 키워드로 최신순 검색 (100개 요청어유)
+    # 관심 분야가 있다면 "IT" 등으로 변경 가능
+    params = {
+        "query": "속보",
+        "display": 50,
+        "sort": "date"
+    }
+
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        
+        for item in data.get("items", []):
+            link = item.get("link", "")
             
-    # 앞에서부터 최대 뉴스 개수만큼 반환
-    return unique_news[:MAX_NEWS_COUNT]
+            # 본문 추출이 가장 완벽한 네이버 자체 서비스 기사만 골라냅니다
+            if "n.news.naver.com" not in link:
+                continue
+                
+            # 네이버 API는 타이틀에 <b> 태그 등을 넣으므로 제거
+            title = re.sub(r'<[^>]+>', '', item.get("title", ""))
+            published = item.get("pubDate", "")
+            
+            news_list.append(NewsInfo(
+                url=link,
+                title=title,
+                publisher="네이버 뉴스",
+                published_date=published
+            ))
+            
+            if len(news_list) >= MAX_NEWS_COUNT:
+                break
+                
+    except Exception as e:
+        logger.error("네이버 API 뉴스 검색 실패: %s", e)
+
+    return news_list
 
 
 def fetch_article_text(url: str) -> str:
-    """주어진 URL의 뉴스 본문을 파이썬 requests와 bs4를 사용해 파싱합니다."""
+    """네이버 뉴스 본문을 파싱 (기사 내용만 정확하게 추출하여 외계어/메뉴 차단)"""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = BeautifulSoup(response.content, "html.parser", from_encoding="utf-8")
         
-        # 뉴스 본문은 보통 p 태그들에 모여있음
+        # 1. 네이버 뉴스 전용 본문 컨테이너 (정확도 100%)
+        dic_area = soup.select_one("#dic_area") or soup.select_one("#newsct_article")
+        if dic_area:
+            # 사진 설명 등 불필요한 내부 태그 제거
+            for blind in dic_area.select("span.end_photo_org, div.nbd_im_w, em.img_desc, strong"):
+                blind.decompose()
+            return dic_area.get_text(separator='\n', strip=True)[:10000]
+            
+        # 2. 일반 백업 로직 (본문 p태그)
         paragraphs = soup.find_all("p")
-        # 공백 제외하고 어느정도 길이가 있는 문단들만 추출
-        text_content = [p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20]
+        text_content = [p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 30]
         
         if not text_content:
-            # p 태그로 못 찾았을 경우, body의 텍스트를 대략적으로 가져옵니다 (단순화된 백업 로직)
             body = soup.find("body")
             if body:
                 text_content = [body.get_text(separator='\n', strip=True)]
-            else:
-                text_content = [soup.get_text(separator='\n', strip=True)]
                 
         full_text = "\n".join(text_content)
-        # 긴 기사일 경우를 대비해 토큰 제한 고려하여 10000자로 자름
         return full_text[:10000]
         
     except Exception as e:
