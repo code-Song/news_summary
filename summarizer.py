@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Callable, Coroutine
 import asyncio
-import google.generativeai as genai
 from config import GEMINI_API_KEY, GEMINI_MODEL
 
 
@@ -33,8 +32,11 @@ async def summarize_news_stream(
         await on_chunk(msg)
         return msg
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(GEMINI_MODEL)
+    # 최신 google.genai 라이브러리 사용
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
     
     prompt = f"""당신은 뉴스 기사를 읽고 3~5문장으로 핵심만 간결하게 요약하는 도우미입니다. 한국어로 답변하세요.
 
@@ -47,17 +49,17 @@ async def summarize_news_stream(
     full_text = ""
     loop = asyncio.get_running_loop()
 
-    # Gemini stream은 동기 generator → executor로 비동기 처리
+    # Gemini stream 비동기 처리
     def _call_stream():
-        return model.generate_content(
-            prompt,
-            stream=True,
-            generation_config=genai.types.GenerationConfig(max_output_tokens=500),
+        return client.models.generate_content_stream(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(max_output_tokens=500),
         )
 
-    response = await loop.run_in_executor(None, _call_stream)
+    response_stream = await loop.run_in_executor(None, _call_stream)
 
-    for chunk in response:
+    for chunk in response_stream:
         part = chunk.text or ""
         if part:
             full_text += part
